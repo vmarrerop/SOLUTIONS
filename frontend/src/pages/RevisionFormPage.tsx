@@ -1,29 +1,147 @@
-import { useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
+  Activity,
   Camera,
+  Check,
   CheckCircle2,
+  ClipboardList,
+  Eye,
   FileText,
+  Gauge,
   ImagePlus,
-  Save,
-  X,
-  AlertTriangle,
+  MessageSquarePlus,
   MinusCircle,
+  Plus,
+  Save,
+  Thermometer,
+  Trash2,
+  X,
+  Zap,
 } from 'lucide-react'
 import { Button, Card, PageHeader, cx } from '../components/ui'
 import { siguienteConsecutivo } from '../data/mock'
 import { useData } from '../store/DataContext'
 
-type ItemEstado = 'ok' | 'atencion' | 'falla' | null
+/* ------------------------------------------------------------------ */
+/* Catálogo del formato DM-MTT-001                                     */
+/* ------------------------------------------------------------------ */
 
-const checklistInicial = [
-  'Estado físico general y limpieza',
-  'Conexiones eléctricas y cableado',
-  'Temperatura y ventilación',
-  'Indicadores / alarmas del equipo',
-  'Actualizaciones de firmware o software',
-  'Pruebas de funcionamiento',
+const MOTIVOS = [
+  { id: 'comercial', label: 'Visita Comercial' },
+  { id: 'assessment', label: 'Assessment' },
+  { id: 'preventivo', label: 'Mtto Preventivo' },
+  { id: 'correctivo', label: 'Mtto Correctivo' },
+] as const
+
+const TIPOS_EQUIPO = [
+  { id: 'CH', label: 'Chiller' },
+  { id: 'AHU', label: 'Manejadora' },
+  { id: 'ODU', label: 'Condensadora VRV' },
+  { id: 'IDU', label: 'Unidad interior VRV' },
+  { id: 'MS', label: 'Mini Split' },
+  { id: 'BC', label: 'Bomba de condensado' },
+  { id: 'CR', label: 'Campanas o rejillas' },
+  { id: 'VT', label: 'Ventilador' },
+] as const
+
+type TipoEquipoId = (typeof TIPOS_EQUIPO)[number]['id']
+
+const TODOS: TipoEquipoId[] = ['CH', 'AHU', 'ODU', 'IDU', 'MS', 'BC', 'CR', 'VT']
+
+interface RutinaItem {
+  texto: string
+  aplica: TipoEquipoId[]
+}
+
+const RUTINA: RutinaItem[] = [
+  { texto: 'Limpieza general de la unidad', aplica: TODOS },
+  { texto: 'Limpieza de serpentines (según aplique)', aplica: ['CH', 'AHU', 'ODU', 'IDU', 'MS'] },
+  { texto: 'Limpieza bandejas y drenajes', aplica: ['AHU', 'IDU', 'MS', 'BC'] },
+  { texto: 'Limpieza filtros aire', aplica: ['AHU', 'IDU', 'MS'] },
+  { texto: 'Limpieza filtros agua', aplica: ['CH', 'AHU'] },
+  { texto: 'Limpieza puntos eléctricos', aplica: TODOS },
+  { texto: 'Ajuste de correas (según aplique)', aplica: ['AHU'] },
+  { texto: 'Revisión libre rotación de ventiladores', aplica: TODOS },
+  { texto: 'Revisión y lubricación de rodamientos (según se requiera)', aplica: TODOS },
+  { texto: 'Verificación de tuberías por fugas (refrigeración y agua)', aplica: ['CH', 'AHU', 'ODU', 'IDU', 'MS'] },
+  { texto: 'Verificación de aislamiento tuberías y ductería (según aplique)', aplica: ['CH', 'AHU', 'ODU', 'IDU', 'MS'] },
+  { texto: 'Inspección de mirillas de líquido (estado de humedad)', aplica: ['CH', 'AHU', 'ODU', 'IDU', 'MS'] },
+  { texto: 'Inspección nivel de aceite', aplica: ['CH'] },
+  { texto: 'Verificación estado de operación (comandos, ventiladores, válvulas, bombas, sensores)', aplica: TODOS },
+  { texto: 'Revisión parámetros de operación panel de control (según aplique)', aplica: TODOS },
+  { texto: 'Revisión de tableros equipos (ajuste de tarjetas, terminales y sulfatación)', aplica: TODOS },
+  { texto: 'Revisión de conexiones eléctricas (ajuste de terminales y sulfatación)', aplica: TODOS },
+  { texto: 'Mediciones eléctricas: voltajes y amperajes', aplica: TODOS },
+  { texto: 'Medición de presión (según aplique)', aplica: ['CH', 'AHU', 'ODU', 'IDU', 'MS'] },
+  { texto: 'Medición de temperatura Sum y Ret (equipo)', aplica: ['CH', 'AHU', 'ODU', 'IDU', 'MS'] },
+  { texto: 'Medición de temperatura Sum y Ret (tubería agua)', aplica: ['CH', 'AHU'] },
+  { texto: 'Medición de super heat y subcooling (según aplique)', aplica: ['CH', 'AHU', 'ODU', 'IDU', 'MS'] },
+  { texto: 'Análisis de parámetros medidos', aplica: TODOS },
 ]
+
+const INSPECCION_VISUAL = ['Estado de tapas, puertas y cerraduras', 'Identificación del equipo']
+
+/* ------------------------------------------------------------------ */
+/* Tipos de estado del formulario                                      */
+/* ------------------------------------------------------------------ */
+
+type CheckEstado = 'ok' | 'na' | null
+type VisualEstado = 'bien' | 'mal' | null
+
+interface RutinaEstado {
+  estado: CheckEstado
+  obs: string
+  obsAbierta: boolean
+}
+
+interface MedicionMecanica {
+  id: number
+  tipo: 'temperatura' | 'presion' | 'otro'
+  etiqueta: string
+  sum: string
+  ret: string
+}
+
+interface MedicionElectrica {
+  id: number
+  componente: string
+  vab: string
+  vbc: string
+  vca: string
+  il1: string
+  il2: string
+  il3: string
+}
+
+/* ------------------------------------------------------------------ */
+/* Componentes auxiliares                                              */
+/* ------------------------------------------------------------------ */
+
+const inputCls =
+  'w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none'
+
+function SectionTitle({
+  icon: Icon,
+  title,
+  hint,
+}: {
+  icon: typeof Eye
+  title: string
+  hint?: string
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="flex size-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+          <Icon className="size-4" />
+        </span>
+        <h2 className="text-sm font-bold text-zinc-900">{title}</h2>
+      </div>
+      {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
+    </div>
+  )
+}
 
 function PhotoUpload({ titulo, hint }: { titulo: string; hint: string }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -74,21 +192,73 @@ function PhotoUpload({ titulo, hint }: { titulo: string; hint: string }) {
   )
 }
 
+/* ------------------------------------------------------------------ */
+/* Página                                                              */
+/* ------------------------------------------------------------------ */
+
 export function RevisionFormPage() {
   const { equipos } = useData()
   const [params] = useSearchParams()
+  const { pathname } = useLocation()
+  const modoTecnico = pathname.startsWith('/tecnico')
   const equipoParam = params.get('equipo') ?? 'eq-01'
-  const [equipoId, setEquipoId] = useState(equipoParam)
-  const [tipo, setTipo] = useState('preventivo')
-  const [checklist, setChecklist] = useState<ItemEstado[]>(
-    checklistInicial.map(() => null),
-  )
-  const [enviado, setEnviado] = useState(false)
-  const consecutivo = siguienteConsecutivo()
 
-  const setItem = (i: number, estado: ItemEstado) => {
-    setChecklist((c) => c.map((v, idx) => (idx === i ? estado : v)))
-  }
+  const [equipoId, setEquipoId] = useState(equipoParam)
+  const [motivo, setMotivo] = useState<string>('preventivo')
+  const [tipoEquipo, setTipoEquipo] = useState<TipoEquipoId | null>(null)
+
+  const [visual, setVisual] = useState<{ estado: VisualEstado; obs: string }[]>(
+    INSPECCION_VISUAL.map(() => ({ estado: null, obs: '' })),
+  )
+
+  const [rutina, setRutina] = useState<RutinaEstado[]>(
+    RUTINA.map(() => ({ estado: null, obs: '', obsAbierta: false })),
+  )
+
+  const [medMec, setMedMec] = useState<MedicionMecanica[]>([
+    { id: 1, tipo: 'temperatura', etiqueta: '', sum: '', ret: '' },
+  ])
+  const [medElec, setMedElec] = useState<MedicionElectrica[]>([
+    { id: 1, componente: '', vab: '', vbc: '', vca: '', il1: '', il2: '', il3: '' },
+  ])
+
+  const [monitoreo, setMonitoreo] = useState('')
+  const [analisis, setAnalisis] = useState('')
+  const [correctivos, setCorrectivos] = useState('')
+  const [observaciones, setObservaciones] = useState('')
+  const [enviado, setEnviado] = useState(false)
+
+  const consecutivo = siguienteConsecutivo()
+  const equipo = equipos.find((e) => e.id === equipoId)
+
+  /* Ítems de rutina visibles según tipo de equipo seleccionado */
+  const rutinaVisible = useMemo(
+    () =>
+      RUTINA.map((item, i) => ({ ...item, i })).filter(
+        (item) => !tipoEquipo || item.aplica.includes(tipoEquipo),
+      ),
+    [tipoEquipo],
+  )
+
+  const completados = rutinaVisible.filter((it) => rutina[it.i].estado !== null).length
+  const progreso = rutinaVisible.length
+    ? Math.round((completados / rutinaVisible.length) * 100)
+    : 0
+
+  const setRutinaItem = (i: number, patch: Partial<RutinaEstado>) =>
+    setRutina((r) => r.map((v, idx) => (idx === i ? { ...v, ...patch } : v)))
+
+  const setVisualItem = (i: number, patch: Partial<{ estado: VisualEstado; obs: string }>) =>
+    setVisual((v) => v.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
+
+  const marcarTodosOk = () =>
+    setRutina((r) =>
+      r.map((v, idx) =>
+        rutinaVisible.some((it) => it.i === idx) && v.estado === null
+          ? { ...v, estado: 'ok' }
+          : v,
+      ),
+    )
 
   if (enviado) {
     return (
@@ -97,22 +267,30 @@ export function RevisionFormPage() {
           <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
             <CheckCircle2 className="size-9" />
           </span>
-          <h1 className="mt-5 text-xl font-bold text-zinc-900">Revisión registrada</h1>
+          <h1 className="mt-5 text-xl font-bold text-zinc-900">Reporte registrado</h1>
           <p className="mt-2 text-sm text-zinc-500">
-            El registro{' '}
+            El reporte{' '}
             <span className="font-mono font-bold text-zinc-900">{consecutivo}</span> fue
             guardado y el documento PDF fue generado correctamente.
           </p>
           <div className="mt-6 flex flex-col gap-2">
             <Button className="w-full">
               <FileText className="size-4" />
-              Descargar PDF del servicio
+              Descargar PDF del reporte
             </Button>
-            <Link to="/historial">
-              <Button variant="secondary" className="w-full">
-                Ir al historial
-              </Button>
-            </Link>
+            {modoTecnico ? (
+              <Link to="/tecnico/escanear">
+                <Button variant="secondary" className="w-full">
+                  Escanear otro QR
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/historial">
+                <Button variant="secondary" className="w-full">
+                  Ir al historial
+                </Button>
+              </Link>
+            )}
           </div>
         </Card>
       </div>
@@ -120,37 +298,73 @@ export function RevisionFormPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5 pb-24">
       <PageHeader
-        title="Nueva revisión"
-        subtitle="Complete el formulario del servicio. El consecutivo se asigna automáticamente."
+        title="Reporte de mantenimiento"
+        subtitle="Formato DM-MTT-001 · Equipos aire acondicionado. Los datos del cliente y horas se registran automáticamente."
       />
 
       {/* Consecutivo */}
       <Card className="flex items-center justify-between gap-3 border-l-4 border-l-brand-600 p-4 sm:p-5">
         <div>
           <p className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-            Consecutivo asignado
+            Serial del reporte
           </p>
-          <p className="mt-1 font-mono text-xl font-extrabold text-zinc-900">
-            {consecutivo}
-          </p>
+          <p className="mt-1 font-mono text-xl font-extrabold text-zinc-900">{consecutivo}</p>
         </div>
-        <p className="max-w-45 text-right text-xs text-zinc-500">
-          Generado automáticamente por el sistema · 23 sep 2026
-        </p>
+        <div className="text-right">
+          <p className="font-mono text-xs font-bold text-zinc-700">DM-MTT-001 · Rev. 1</p>
+          <p className="mt-0.5 text-xs text-zinc-500">Generado automáticamente</p>
+        </div>
       </Card>
 
-      {/* Datos generales */}
+      {/* Motivo de la visita */}
+      <Card className="space-y-3 p-4 sm:p-5">
+        <SectionTitle icon={ClipboardList} title="Motivo de la visita" />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {MOTIVOS.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMotivo(m.id)}
+              className={cx(
+                'rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors',
+                motivo === m.id
+                  ? 'border-brand-600 bg-brand-600 text-white shadow-sm shadow-brand-600/30'
+                  : 'border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400',
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {/* Datos del equipo */}
       <Card className="space-y-4 p-4 sm:p-5">
-        <h2 className="text-sm font-bold text-zinc-900">Datos generales</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <SectionTitle
+          icon={Gauge}
+          title="Datos del equipo"
+          hint="Seleccione el equipo: identificación, modelo, serial y ubicación se cargan solos."
+        />
+        {modoTecnico ? (
+          equipo && (
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800 ring-1 ring-emerald-200">
+              <CheckCircle2 className="size-4 shrink-0" />
+              <span>
+                Equipo identificado por QR:{' '}
+                <span className="font-mono font-bold">{equipo.codigo}</span> ·{' '}
+                {equipo.nombre}
+              </span>
+            </div>
+          )
+        ) : (
           <div>
             <label className="mb-1.5 block text-sm font-medium text-zinc-700">Equipo</label>
             <select
               value={equipoId}
               onChange={(e) => setEquipoId(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+              className={inputCls}
             >
               {equipos.map((eq) => (
                 <option key={eq.id} value={eq.id}>
@@ -159,81 +373,482 @@ export function RevisionFormPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700">
-              Tipo de servicio
-            </label>
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
-            >
-              <option value="preventivo">Mantenimiento preventivo</option>
-              <option value="correctivo">Mantenimiento correctivo</option>
-              <option value="revision">Revisión / inspección</option>
-              <option value="instalacion">Instalación</option>
-            </select>
+        )}
+        {equipo && (
+          <dl className="grid grid-cols-2 gap-3 rounded-xl bg-zinc-50 p-3 text-sm sm:grid-cols-4">
+            <div>
+              <dt className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+                Identificación
+              </dt>
+              <dd className="mt-0.5 font-semibold text-zinc-900">{equipo.codigo}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+                Modelo
+              </dt>
+              <dd className="mt-0.5 font-semibold text-zinc-900">{equipo.modelo}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+                Serial
+              </dt>
+              <dd className="mt-0.5 font-semibold text-zinc-900">{equipo.serial}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+                Ubicación
+              </dt>
+              <dd className="mt-0.5 font-semibold text-zinc-900">{equipo.ubicacion}</dd>
+            </div>
+          </dl>
+        )}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+            Tipo de equipo
+          </label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {TIPOS_EQUIPO.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTipoEquipo(tipoEquipo === t.id ? null : t.id)}
+                className={cx(
+                  'rounded-xl border px-2 py-2.5 text-center transition-colors',
+                  tipoEquipo === t.id
+                    ? 'border-brand-600 bg-brand-50 ring-2 ring-brand-500/30'
+                    : 'border-zinc-300 bg-white hover:border-zinc-400',
+                )}
+              >
+                <span
+                  className={cx(
+                    'block font-mono text-sm font-extrabold',
+                    tipoEquipo === t.id ? 'text-brand-700' : 'text-zinc-800',
+                  )}
+                >
+                  {t.id}
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-tight text-zinc-500">
+                  {t.label}
+                </span>
+              </button>
+            ))}
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700">Técnico</label>
-            <input
-              defaultValue="Carlos Mendoza"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700">
-              Fecha del servicio
-            </label>
-            <input
-              type="date"
-              defaultValue="2026-09-23"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
-            />
-          </div>
+          {tipoEquipo && (
+            <p className="mt-2 text-xs text-emerald-700">
+              <Check className="mr-1 inline size-3.5" />
+              La rutina de mantenimiento muestra solo los ítems que aplican a{' '}
+              <span className="font-bold">{tipoEquipo}</span>.
+            </p>
+          )}
         </div>
       </Card>
 
-      {/* Checklist */}
-      <Card className="p-4 sm:p-5">
-        <h2 className="text-sm font-bold text-zinc-900">Lista de verificación</h2>
-        <p className="text-xs text-zinc-500">
-          Marque el estado de cada punto inspeccionado.
-        </p>
-        <ul className="mt-4 divide-y divide-zinc-100">
-          {checklistInicial.map((item, i) => (
-            <li
-              key={item}
-              className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <span className="text-sm text-zinc-700">{item}</span>
-              <div className="flex gap-1.5">
-                {(
-                  [
-                    { id: 'ok', label: 'OK', icon: CheckCircle2, active: 'bg-emerald-600 text-white' },
-                    { id: 'atencion', label: 'Atención', icon: AlertTriangle, active: 'bg-amber-500 text-white' },
-                    { id: 'falla', label: 'Falla', icon: MinusCircle, active: 'bg-brand-600 text-white' },
-                  ] as const
-                ).map(({ id, label, icon: Icon, active }) => (
+      {/* Estado del equipo · inspección visual */}
+      <Card className="space-y-3 p-4 sm:p-5">
+        <SectionTitle
+          icon={Eye}
+          title="Estado del equipo"
+          hint="Inspección visual de los componentes."
+        />
+        <ul className="divide-y divide-zinc-100">
+          {INSPECCION_VISUAL.map((item, i) => (
+            <li key={item} className="space-y-2 py-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm text-zinc-700">{item}</span>
+                <div className="flex gap-1.5">
                   <button
-                    key={id}
                     type="button"
-                    onClick={() => setItem(i, checklist[i] === id ? null : id)}
+                    onClick={() =>
+                      setVisualItem(i, { estado: visual[i].estado === 'bien' ? null : 'bien' })
+                    }
                     className={cx(
-                      'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
-                      checklist[i] === id
-                        ? active
+                      'inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors',
+                      visual[i].estado === 'bien'
+                        ? 'bg-emerald-600 text-white'
                         : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
                     )}
                   >
-                    <Icon className="size-3.5" />
-                    {label}
+                    <CheckCircle2 className="size-3.5" />
+                    Bien
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVisualItem(i, { estado: visual[i].estado === 'mal' ? null : 'mal' })
+                    }
+                    className={cx(
+                      'inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors',
+                      visual[i].estado === 'mal'
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200',
+                    )}
+                  >
+                    <MinusCircle className="size-3.5" />
+                    Mal
+                  </button>
+                </div>
               </div>
+              {visual[i].estado === 'mal' && (
+                <input
+                  value={visual[i].obs}
+                  onChange={(e) => setVisualItem(i, { obs: e.target.value })}
+                  placeholder="Describa el hallazgo…"
+                  className={inputCls}
+                />
+              )}
             </li>
           ))}
         </ul>
+      </Card>
+
+      {/* Rutina de mantenimiento general */}
+      <Card className="p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <SectionTitle
+            icon={ClipboardList}
+            title="Rutina de mantenimiento general"
+            hint={
+              tipoEquipo
+                ? `${rutinaVisible.length} ítems aplican para ${tipoEquipo}.`
+                : 'Seleccione el tipo de equipo para filtrar los ítems aplicables.'
+            }
+          />
+          <button
+            type="button"
+            onClick={marcarTodosOk}
+            className="shrink-0 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-200"
+          >
+            Marcar pendientes ✓
+          </button>
+        </div>
+
+        {/* Progreso */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-zinc-700">
+              {completados} de {rutinaVisible.length} ítems
+            </span>
+            <span className="font-mono font-bold text-zinc-900">{progreso}%</span>
+          </div>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-100">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${progreso}%` }}
+            />
+          </div>
+        </div>
+
+        <ul className="mt-3 divide-y divide-zinc-100">
+          {rutinaVisible.map(({ texto, aplica, i }) => {
+            const it = rutina[i]
+            return (
+              <li key={texto} className="py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm leading-snug text-zinc-700">{texto}</p>
+                    {!tipoEquipo && (
+                      <p className="mt-0.5 font-mono text-[10px] tracking-wide text-zinc-400">
+                        {aplica.length === TODOS.length ? 'TODOS' : aplica.join(' / ')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setRutinaItem(i, { estado: it.estado === 'ok' ? null : 'ok' })}
+                      title="Realizado"
+                      className={cx(
+                        'flex size-9 items-center justify-center rounded-lg transition-colors',
+                        it.estado === 'ok'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200',
+                      )}
+                    >
+                      <Check className="size-4.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRutinaItem(i, { estado: it.estado === 'na' ? null : 'na' })}
+                      title="No aplica"
+                      className={cx(
+                        'flex h-9 items-center justify-center rounded-lg px-2.5 text-xs font-bold transition-colors',
+                        it.estado === 'na'
+                          ? 'bg-zinc-700 text-white'
+                          : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200',
+                      )}
+                    >
+                      N/A
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRutinaItem(i, { obsAbierta: !it.obsAbierta })}
+                      title="Agregar observación"
+                      className={cx(
+                        'flex size-9 items-center justify-center rounded-lg transition-colors',
+                        it.obsAbierta || it.obs
+                          ? 'bg-sky-100 text-sky-700'
+                          : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200',
+                      )}
+                    >
+                      <MessageSquarePlus className="size-4.5" />
+                    </button>
+                  </div>
+                </div>
+                {it.obsAbierta && (
+                  <input
+                    value={it.obs}
+                    onChange={(e) => setRutinaItem(i, { obs: e.target.value })}
+                    placeholder="Observación…"
+                    className={cx(inputCls, 'mt-2')}
+                  />
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      </Card>
+
+      {/* Mediciones mecánicas */}
+      <Card className="space-y-3 p-4 sm:p-5">
+        <SectionTitle
+          icon={Thermometer}
+          title="Mediciones mecánicas"
+          hint="Temperaturas y presiones de suministro / retorno."
+        />
+        <div className="space-y-3">
+          {medMec.map((m) => (
+            <div key={m.id} className="rounded-xl border border-zinc-200 p-3">
+              <div className="flex items-center gap-2">
+                <select
+                  value={m.tipo}
+                  onChange={(e) =>
+                    setMedMec((arr) =>
+                      arr.map((x) =>
+                        x.id === m.id
+                          ? { ...x, tipo: e.target.value as MedicionMecanica['tipo'] }
+                          : x,
+                      ),
+                    )
+                  }
+                  className={cx(inputCls, 'w-36 shrink-0')}
+                >
+                  <option value="temperatura">Temp de</option>
+                  <option value="presion">Presión de</option>
+                  <option value="otro">Dato de</option>
+                </select>
+                <input
+                  value={m.etiqueta}
+                  onChange={(e) =>
+                    setMedMec((arr) =>
+                      arr.map((x) => (x.id === m.id ? { ...x, etiqueta: e.target.value } : x)),
+                    )
+                  }
+                  placeholder="Ej. agua, refrigerante, aire…"
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMedMec((arr) => arr.filter((x) => x.id !== m.id))}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+                    {m.tipo === 'presion' ? 'Sum / Alta' : m.tipo === 'temperatura' ? 'Sum' : 'Valor 1'}
+                  </label>
+                  <input
+                    value={m.sum}
+                    onChange={(e) =>
+                      setMedMec((arr) =>
+                        arr.map((x) => (x.id === m.id ? { ...x, sum: e.target.value } : x)),
+                      )
+                    }
+                    inputMode="decimal"
+                    placeholder={m.tipo === 'presion' ? 'PSI' : m.tipo === 'temperatura' ? '°C / °F' : '—'}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+                    {m.tipo === 'presion' ? 'Ret / Baja' : m.tipo === 'temperatura' ? 'Ret' : 'Valor 2'}
+                  </label>
+                  <input
+                    value={m.ret}
+                    onChange={(e) =>
+                      setMedMec((arr) =>
+                        arr.map((x) => (x.id === m.id ? { ...x, ret: e.target.value } : x)),
+                      )
+                    }
+                    inputMode="decimal"
+                    placeholder={m.tipo === 'presion' ? 'PSI' : m.tipo === 'temperatura' ? '°C / °F' : '—'}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() =>
+            setMedMec((arr) => [
+              ...arr,
+              {
+                id: (arr.at(-1)?.id ?? 0) + 1,
+                tipo: 'temperatura',
+                etiqueta: '',
+                sum: '',
+                ret: '',
+              },
+            ])
+          }
+        >
+          <Plus className="size-4" />
+          Agregar medición
+        </Button>
+      </Card>
+
+      {/* Mediciones eléctricas */}
+      <Card className="space-y-3 p-4 sm:p-5">
+        <SectionTitle
+          icon={Zap}
+          title="Mediciones eléctricas"
+          hint="Voltajes AB / BC / CA (VAC) y corrientes por componente."
+        />
+        <div className="space-y-3">
+          {medElec.map((m, idx) => (
+            <div key={m.id} className="rounded-xl border border-zinc-200 p-3">
+              <div className="flex items-center gap-2">
+                <input
+                  value={m.componente}
+                  onChange={(e) =>
+                    setMedElec((arr) =>
+                      arr.map((x) => (x.id === m.id ? { ...x, componente: e.target.value } : x)),
+                    )
+                  }
+                  placeholder={`Componente ${idx + 1} · Ej. compresor 1, ventilador…`}
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMedElec((arr) => arr.filter((x) => x.id !== m.id))}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {(
+                  [
+                    ['vab', 'V AB'],
+                    ['vbc', 'V BC'],
+                    ['vca', 'V CA'],
+                    ['il1', 'I L1'],
+                    ['il2', 'I L2'],
+                    ['il3', 'I L3'],
+                  ] as const
+                ).map(([campo, label]) => (
+                  <div key={campo}>
+                    <label className="mb-1 block text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+                      {label}
+                    </label>
+                    <input
+                      value={m[campo]}
+                      onChange={(e) =>
+                        setMedElec((arr) =>
+                          arr.map((x) =>
+                            x.id === m.id ? { ...x, [campo]: e.target.value } : x,
+                          ),
+                        )
+                      }
+                      inputMode="decimal"
+                      placeholder={campo.startsWith('v') ? 'VAC' : 'A'}
+                      className={inputCls}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() =>
+            setMedElec((arr) => [
+              ...arr,
+              {
+                id: (arr.at(-1)?.id ?? 0) + 1,
+                componente: '',
+                vab: '',
+                vbc: '',
+                vca: '',
+                il1: '',
+                il2: '',
+                il3: '',
+              },
+            ])
+          }
+        >
+          <Plus className="size-4" />
+          Agregar componente
+        </Button>
+      </Card>
+
+      {/* Funcionamiento monitoreo + análisis */}
+      <Card className="space-y-4 p-4 sm:p-5">
+        <SectionTitle icon={Activity} title="Funcionamiento y análisis" />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+            Funcionamiento monitoreo
+          </label>
+          <input
+            value={monitoreo}
+            onChange={(e) => setMonitoreo(e.target.value)}
+            placeholder="Estado del monitoreo del equipo…"
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+            Análisis operación
+          </label>
+          <textarea
+            rows={3}
+            value={analisis}
+            onChange={(e) => setAnalisis(e.target.value)}
+            placeholder="Análisis del estado operativo del equipo…"
+            className={cx(inputCls, 'resize-none')}
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+            Correctivos sugeridos
+          </label>
+          <textarea
+            rows={3}
+            value={correctivos}
+            onChange={(e) => setCorrectivos(e.target.value)}
+            placeholder="Acciones correctivas recomendadas…"
+            className={cx(inputCls, 'resize-none')}
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+            Observaciones adicionales
+          </label>
+          <textarea
+            rows={3}
+            value={observaciones}
+            onChange={(e) => setObservaciones(e.target.value)}
+            placeholder="Otras observaciones de la visita…"
+            className={cx(inputCls, 'resize-none')}
+          />
+        </div>
       </Card>
 
       {/* Fotografías */}
@@ -249,18 +864,6 @@ export function RevisionFormPage() {
         <PhotoUpload
           titulo="Fotos DESPUÉS de la intervención"
           hint="Registre el estado final una vez completado el servicio."
-        />
-      </Card>
-
-      {/* Observaciones */}
-      <Card className="p-4 sm:p-5">
-        <label className="mb-1.5 block text-sm font-bold text-zinc-900">
-          Observaciones del servicio
-        </label>
-        <textarea
-          rows={4}
-          placeholder="Describa el trabajo realizado, hallazgos y recomendaciones…"
-          className="w-full resize-none rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm placeholder:text-zinc-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
         />
       </Card>
 

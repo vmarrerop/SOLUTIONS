@@ -1,0 +1,55 @@
+import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom'
+import { LogOut, QrCode } from 'lucide-react'
+
+export function TecnicoLayout() {
+  const navigate = useNavigate()
+  const autenticado = sessionStorage.getItem('sm-tecnico') === '1'
+
+  if (!autenticado) return <Navigate to="/t" replace />
+
+  const salir = () => {
+    sessionStorage.removeItem('sm-tecnico')
+    navigate('/t', { replace: true })
+  }
+
+  return (
+    <div className="min-h-dvh bg-zinc-100">
+      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 shadow-md shadow-brand-600/40">
+              <span className="text-sm font-extrabold text-white">S</span>
+            </div>
+            <div className="leading-tight">
+              <p className="text-sm font-bold text-zinc-900">Solutions Machine</p>
+              <p className="text-[10px] font-semibold tracking-wide text-brand-600 uppercase">
+                Modo técnico
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Link
+              to="/tecnico/escanear"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              <QrCode className="size-4" />
+              <span className="hidden sm:inline">Escanear QR</span>
+            </Link>
+            <button
+              type="button"
+              onClick={salir}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800"
+            >
+              <LogOut className="size-4" />
+              <span className="hidden sm:inline">Salir</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-3xl px-4 pt-5 pb-10 sm:px-6">
+        <Outlet />
+      </main>
+    </div>
+  )
+}

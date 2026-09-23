@@ -11,12 +11,23 @@ import { EscanearPage } from './pages/EscanearPage'
 import { RevisionFormPage } from './pages/RevisionFormPage'
 import { HistorialPage } from './pages/HistorialPage'
 import { UsuariosPage } from './pages/UsuariosPage'
+import { TecnicoLayout } from './components/layout/TecnicoLayout'
+import { TecnicoLoginPage } from './pages/tecnico/TecnicoLoginPage'
+import { TecnicoEscanearPage } from './pages/tecnico/TecnicoEscanearPage'
 
 export default function App() {
   return (
     <DataProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+
+        {/* Flujo del técnico (acceso vía QR) */}
+        <Route path="/t" element={<TecnicoLoginPage />} />
+        <Route path="/t/:codigo" element={<TecnicoLoginPage />} />
+        <Route element={<TecnicoLayout />}>
+          <Route path="/tecnico/escanear" element={<TecnicoEscanearPage />} />
+          <Route path="/tecnico/reporte" element={<RevisionFormPage />} />
+        </Route>
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/equipos" element={<EquiposPage />} />

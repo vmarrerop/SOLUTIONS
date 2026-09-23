@@ -28,5 +28,5 @@ export function descargarQrPng(svg: SVGSVGElement, nombreArchivo: string) {
 }
 
 export function urlDeEquipo(codigo: string) {
-  return `https://portal.solutionsmachine.co/equipos/${codigo}`
+  return `https://solutions-5voz.onrender.com/t/${codigo}`
 }
