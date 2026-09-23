@@ -9,7 +9,7 @@ import {
   Eye,
   FileText,
   Gauge,
-  ImagePlus,
+  Lock,
   MessageSquarePlus,
   MinusCircle,
   Plus,
@@ -143,50 +143,79 @@ function SectionTitle({
   )
 }
 
-function PhotoUpload({ titulo, hint }: { titulo: string; hint: string }) {
+function PhotoCapture({
+  titulo,
+  hint,
+  fotos,
+  onChange,
+}: {
+  titulo: string
+  hint: string
+  fotos: string[]
+  onChange: (fotos: string[]) => void
+}) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [previews, setPreviews] = useState<string[]>([])
 
   const onFiles = (files: FileList | null) => {
     if (!files) return
     const urls = Array.from(files).map((f) => URL.createObjectURL(f))
-    setPreviews((p) => [...p, ...urls])
+    onChange([...fotos, ...urls])
   }
 
+  const tomada = fotos.length > 0
+
   return (
-    <div>
-      <p className="text-sm font-semibold text-zinc-900">{titulo}</p>
-      <p className="text-xs text-zinc-500">{hint}</p>
-      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {previews.map((src, i) => (
-          <div key={src} className="group relative aspect-square overflow-hidden rounded-xl">
-            <img src={src} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
-            <button
-              type="button"
-              onClick={() => setPreviews((p) => p.filter((u) => u !== src))}
-              className="absolute top-1 right-1 rounded-full bg-ink-950/70 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+    <div className="flex flex-col items-center text-center">
+      <span
+        className={cx(
+          'flex size-14 items-center justify-center rounded-full transition-colors',
+          tomada ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600',
+        )}
+      >
+        {tomada ? <CheckCircle2 className="size-7" /> : <Camera className="size-7" />}
+      </span>
+      <p className="mt-3 text-sm font-bold text-zinc-900">{titulo}</p>
+      <p className="mt-1 max-w-xs text-xs text-zinc-500">{hint}</p>
+
+      {tomada && (
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {fotos.map((src, i) => (
+            <div
+              key={src}
+              className="relative size-24 overflow-hidden rounded-xl shadow-sm ring-1 ring-zinc-200"
             >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-colors hover:border-brand-400 hover:text-brand-600"
-        >
-          <ImagePlus className="size-6" />
-          <span className="text-[11px] font-semibold">Agregar</span>
-        </button>
-      </div>
+              <img src={src} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => onChange(fotos.filter((u) => u !== src))}
+                className="absolute top-1 right-1 rounded-full bg-ink-950/70 p-1 text-white"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button
+        variant={tomada ? 'secondary' : 'primary'}
+        className="mt-4 w-full sm:w-auto sm:px-8"
+        onClick={() => inputRef.current?.click()}
+      >
+        <Camera className="size-4" />
+        {tomada ? 'Tomar otra foto' : 'Tomar foto'}
+      </Button>
+
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
         capture="environment"
-        multiple
         className="hidden"
-        onChange={(e) => onFiles(e.target.files)}
+        onChange={(e) => {
+          onFiles(e.target.files)
+          e.target.value = ''
+        }}
       />
     </div>
   )
@@ -226,10 +255,17 @@ export function RevisionFormPage() {
   const [analisis, setAnalisis] = useState('')
   const [correctivos, setCorrectivos] = useState('')
   const [observaciones, setObservaciones] = useState('')
+  const [fotosEntrada, setFotosEntrada] = useState<string[]>([])
+  const [fotosSalida, setFotosSalida] = useState<string[]>([])
   const [enviado, setEnviado] = useState(false)
 
   const consecutivo = siguienteConsecutivo()
   const equipo = equipos.find((e) => e.id === equipoId)
+
+  /* El formulario queda bloqueado hasta tomar la foto de entrada */
+  const fotoEntradaLista = fotosEntrada.length > 0
+  const bloqueado = fotoEntradaLista ? false : ('pointer-events-none opacity-40 select-none' as const)
+  const puedeCompletar = fotoEntradaLista && fotosSalida.length > 0
 
   /* Ítems de rutina visibles según tipo de equipo seleccionado */
   const rutinaVisible = useMemo(
@@ -318,8 +354,29 @@ export function RevisionFormPage() {
         </div>
       </Card>
 
+      {/* Foto de entrada (obligatoria para habilitar el formulario) */}
+      <Card
+        className={cx(
+          'p-5 sm:p-6',
+          !fotoEntradaLista && 'border-brand-300 ring-2 ring-brand-500/20',
+        )}
+      >
+        <PhotoCapture
+          titulo="Foto de entrada · ANTES"
+          hint="Tome la foto del estado inicial del equipo antes de intervenirlo."
+          fotos={fotosEntrada}
+          onChange={setFotosEntrada}
+        />
+        {!fotoEntradaLista && (
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-brand-700">
+            <Lock className="size-3.5" />
+            El formulario se habilita al tomar la foto de entrada
+          </p>
+        )}
+      </Card>
+
       {/* Motivo de la visita */}
-      <Card className="space-y-3 p-4 sm:p-5">
+      <Card className={cx('space-y-3 p-4 sm:p-5', bloqueado)}>
         <SectionTitle icon={ClipboardList} title="Motivo de la visita" />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {MOTIVOS.map((m) => (
@@ -341,7 +398,7 @@ export function RevisionFormPage() {
       </Card>
 
       {/* Datos del equipo */}
-      <Card className="space-y-4 p-4 sm:p-5">
+      <Card className={cx('space-y-4 p-4 sm:p-5', bloqueado)}>
         <SectionTitle
           icon={Gauge}
           title="Datos del equipo"
@@ -444,7 +501,7 @@ export function RevisionFormPage() {
       </Card>
 
       {/* Estado del equipo · inspección visual */}
-      <Card className="space-y-3 p-4 sm:p-5">
+      <Card className={cx('space-y-3 p-4 sm:p-5', bloqueado)}>
         <SectionTitle
           icon={Eye}
           title="Estado del equipo"
@@ -502,7 +559,7 @@ export function RevisionFormPage() {
       </Card>
 
       {/* Rutina de mantenimiento general */}
-      <Card className="p-4 sm:p-5">
+      <Card className={cx('p-4 sm:p-5', bloqueado)}>
         <div className="flex items-start justify-between gap-3">
           <SectionTitle
             icon={ClipboardList}
@@ -609,7 +666,7 @@ export function RevisionFormPage() {
       </Card>
 
       {/* Mediciones mecánicas */}
-      <Card className="space-y-3 p-4 sm:p-5">
+      <Card className={cx('space-y-3 p-4 sm:p-5', bloqueado)}>
         <SectionTitle
           icon={Thermometer}
           title="Mediciones mecánicas"
@@ -713,7 +770,7 @@ export function RevisionFormPage() {
       </Card>
 
       {/* Mediciones eléctricas */}
-      <Card className="space-y-3 p-4 sm:p-5">
+      <Card className={cx('space-y-3 p-4 sm:p-5', bloqueado)}>
         <SectionTitle
           icon={Zap}
           title="Mediciones eléctricas"
@@ -800,7 +857,7 @@ export function RevisionFormPage() {
       </Card>
 
       {/* Funcionamiento monitoreo + análisis */}
-      <Card className="space-y-4 p-4 sm:p-5">
+      <Card className={cx('space-y-4 p-4 sm:p-5', bloqueado)}>
         <SectionTitle icon={Activity} title="Funcionamiento y análisis" />
         <div>
           <label className="mb-1.5 block text-sm font-medium text-zinc-700">
@@ -851,29 +908,39 @@ export function RevisionFormPage() {
         </div>
       </Card>
 
-      {/* Fotografías */}
-      <Card className="space-y-6 p-4 sm:p-5">
-        <div className="flex items-center gap-2">
-          <Camera className="size-4 text-zinc-500" />
-          <h2 className="text-sm font-bold text-zinc-900">Evidencia fotográfica</h2>
-        </div>
-        <PhotoUpload
-          titulo="Fotos ANTES de la intervención"
-          hint="Registre el estado inicial del equipo."
+      {/* Foto de salida (obligatoria para completar) */}
+      <Card
+        className={cx(
+          'p-5 sm:p-6',
+          bloqueado,
+          fotoEntradaLista && fotosSalida.length === 0 && 'border-brand-300 ring-2 ring-brand-500/20',
+        )}
+      >
+        <PhotoCapture
+          titulo="Foto de salida · DESPUÉS"
+          hint="Tome la foto del estado final del equipo una vez completado el servicio."
+          fotos={fotosSalida}
+          onChange={setFotosSalida}
         />
-        <PhotoUpload
-          titulo="Fotos DESPUÉS de la intervención"
-          hint="Registre el estado final una vez completado el servicio."
-        />
+        {fotoEntradaLista && fotosSalida.length === 0 && (
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-brand-700">
+            <Lock className="size-3.5" />
+            El reporte se puede completar al tomar la foto de salida
+          </p>
+        )}
       </Card>
 
       {/* Acciones */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <div className={cx('flex flex-col gap-2 sm:flex-row sm:justify-end', bloqueado)}>
         <Button variant="secondary" className="sm:w-auto">
           <Save className="size-4" />
           Guardar borrador
         </Button>
-        <Button className="sm:w-auto" onClick={() => setEnviado(true)}>
+        <Button
+          className="sm:w-auto"
+          disabled={!puedeCompletar}
+          onClick={() => setEnviado(true)}
+        >
           <FileText className="size-4" />
           Completar y generar PDF
         </Button>
