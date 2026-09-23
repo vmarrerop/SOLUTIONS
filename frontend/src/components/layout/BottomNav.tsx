@@ -1,20 +1,19 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Server, QrCode, History, Building2 } from 'lucide-react'
+import { Server, QrCode, History, Building2 } from 'lucide-react'
 import { cx } from '../ui'
 
 const items = [
-  { to: '/', label: 'Inicio', icon: LayoutDashboard, end: true },
   { to: '/equipos', label: 'Equipos', icon: Server },
+  { to: '/empresas', label: 'Empresas', icon: Building2 },
   { to: '/escanear', label: 'Escanear', icon: QrCode, primary: true },
   { to: '/historial', label: 'Historial', icon: History },
-  { to: '/empresas', label: 'Empresas', icon: Building2 },
 ]
 
 export function BottomNav() {
   return (
     <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur lg:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-5">
-        {items.map(({ to, label, icon: Icon, end, primary }) =>
+      <div className="mx-auto grid max-w-md grid-cols-4">
+        {items.map(({ to, label, icon: Icon, primary }) =>
           primary ? (
             <NavLink
               key={to}
@@ -30,7 +29,6 @@ export function BottomNav() {
             <NavLink
               key={to}
               to={to}
-              end={end}
               className={({ isActive }) =>
                 cx(
                   'flex flex-col items-center gap-1 pt-2.5 pb-2 text-[10px] font-medium transition-colors',
