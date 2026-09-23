@@ -42,6 +42,13 @@ export function LoginPage() {
       <div className="relative flex flex-col justify-between overflow-hidden bg-ink-950 px-6 py-8 text-white sm:px-10 lg:w-1/2 lg:py-12">
         <div className="pointer-events-none absolute -top-32 -right-32 size-96 rounded-full bg-brand-600/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-40 -left-24 size-96 rounded-full bg-brand-600/10 blur-3xl" />
+        {/* Marca de agua con el isotipo */}
+        <img
+          src="/icon.png"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 -bottom-24 w-[26rem] rotate-12 opacity-10 select-none lg:w-[32rem]"
+        />
 
         <div className="relative flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-white p-1.5 shadow-lg">

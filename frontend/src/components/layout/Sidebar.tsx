@@ -25,7 +25,16 @@ export function Sidebar({
     equipos.filter((e) => e.empresaId === empresaId).length
 
   return (
-    <aside className={cx('flex-col bg-ink-950 text-zinc-300', className)}>
+    <aside
+      className={cx('relative flex-col overflow-hidden bg-ink-950 text-zinc-300', className)}
+    >
+      {/* Marca de agua con el isotipo */}
+      <img
+        src="/icon.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-20 -left-20 w-72 -rotate-12 opacity-[0.07] select-none"
+      />
       <div className="border-b border-white/10 px-5 py-5">
         <LogoSM />
       </div>

@@ -38,6 +38,13 @@ export function TecnicoLoginPage() {
     <div className="flex min-h-dvh flex-col items-center justify-center bg-ink-950 px-6 py-10">
       <div className="pointer-events-none fixed -top-32 -right-32 size-96 rounded-full bg-brand-600/20 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-40 -left-24 size-96 rounded-full bg-brand-600/10 blur-3xl" />
+      {/* Marca de agua con el isotipo */}
+      <img
+        src="/icon.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none fixed -right-20 -bottom-20 w-80 rotate-12 opacity-10 select-none"
+      />
 
       <div className="relative w-full max-w-sm">
         {/* Marca */}
