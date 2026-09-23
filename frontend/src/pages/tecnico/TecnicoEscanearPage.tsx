@@ -1,21 +1,97 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, CheckCircle2, Keyboard, Zap } from 'lucide-react'
+import { Camera, CameraOff, CheckCircle2, Keyboard, Zap } from 'lucide-react'
 import { Button, Card, PageHeader } from '../../components/ui'
 import { useData } from '../../store/DataContext'
+import type { Equipo } from '../../types'
+
+/* API BarcodeDetector (aún sin tipos en TS) */
+interface QrDetectado {
+  rawValue: string
+}
+interface DetectorQr {
+  detect(video: HTMLVideoElement): Promise<QrDetectado[]>
+}
+type BarcodeDetectorCtor = new (opts: { formats: string[] }) => DetectorQr
 
 export function TecnicoEscanearPage() {
   const navigate = useNavigate()
   const { equipos } = useData()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const yaDetectado = useRef(false)
   const [detectado, setDetectado] = useState<string | null>(null)
+  const [camaraLista, setCamaraLista] = useState(false)
+  const [camaraError, setCamaraError] = useState(false)
   const [codigo, setCodigo] = useState('')
   const [noEncontrado, setNoEncontrado] = useState(false)
 
-  const simularLectura = () => {
-    // Demo estática: el QR resuelve a un equipo aleatorio
-    const eq = equipos[Math.floor(Math.random() * equipos.length)]
+  const abrirReporte = (eq: Equipo) => {
+    if (yaDetectado.current) return
+    yaDetectado.current = true
     setDetectado(eq.codigo)
-    setTimeout(() => navigate(`/tecnico/reporte?equipo=${eq.id}`), 1200)
+    setTimeout(() => navigate(`/tecnico/reporte?equipo=${eq.id}`), 1000)
+  }
+
+  const onQrLeido = (texto: string) => {
+    // El QR codifica https://…/t/<codigo>; también acepta el código directo
+    const match = texto.match(/\/t\/([\w-]+)/i)
+    const cod = (match ? match[1] : texto).trim().toLowerCase()
+    const eq =
+      equipos.find((e) => e.codigo.toLowerCase() === cod) ??
+      // Demo estática: si el código no está en el mock, abre un equipo aleatorio
+      equipos[Math.floor(Math.random() * equipos.length)]
+    abrirReporte(eq)
+  }
+
+  /* Activa la cámara trasera y, si el navegador lo soporta, lee el QR en vivo */
+  useEffect(() => {
+    let stream: MediaStream | undefined
+    let intervalo: number | undefined
+    let cancelado = false
+
+    const iniciar = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false,
+        })
+        if (cancelado || !videoRef.current) return
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => undefined)
+        setCamaraLista(true)
+
+        const Detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor })
+          .BarcodeDetector
+        if (Detector) {
+          const detector = new Detector({ formats: ['qr_code'] })
+          intervalo = window.setInterval(async () => {
+            const video = videoRef.current
+            if (!video || video.readyState < 2 || yaDetectado.current) return
+            try {
+              const codigos = await detector.detect(video)
+              if (codigos.length > 0) onQrLeido(codigos[0].rawValue)
+            } catch {
+              /* frame no legible, se reintenta */
+            }
+          }, 400)
+        }
+      } catch {
+        if (!cancelado) setCamaraError(true)
+      }
+    }
+
+    iniciar()
+    return () => {
+      cancelado = true
+      if (intervalo) clearInterval(intervalo)
+      stream?.getTracks().forEach((t) => t.stop())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const simularLectura = () => {
+    const eq = equipos[Math.floor(Math.random() * equipos.length)]
+    abrirReporte(eq)
   }
 
   const buscarCodigo = () => {
@@ -36,10 +112,19 @@ export function TecnicoEscanearPage() {
         subtitle="Apunte la cámara al QR del equipo para abrir su reporte de mantenimiento."
       />
 
-      {/* Visor de cámara (simulado en la demo) */}
+      {/* Visor de cámara */}
       <Card className="overflow-hidden bg-ink-950 p-0">
         <div className="relative aspect-square sm:aspect-[4/3]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#2b2b33_0%,#0a0a0c_70%)]" />
+
+          {/* Video en vivo de la cámara */}
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            autoPlay
+            className="absolute inset-0 h-full w-full object-cover"
+          />
 
           {/* Marco de enfoque */}
           <div className="absolute inset-0 flex items-center justify-center">
@@ -48,11 +133,11 @@ export function TecnicoEscanearPage() {
               <span className="absolute top-0 right-0 h-8 w-8 rounded-tr-lg border-t-4 border-r-4 border-brand-500" />
               <span className="absolute bottom-0 left-0 h-8 w-8 rounded-bl-lg border-b-4 border-l-4 border-brand-500" />
               <span className="absolute right-0 bottom-0 h-8 w-8 rounded-br-lg border-r-4 border-b-4 border-brand-500" />
-              {!detectado && (
+              {!detectado && camaraLista && (
                 <span className="animate-scanline absolute inset-x-3 top-3 h-0.5 rounded-full bg-brand-500 shadow-[0_0_12px_2px_rgba(230,58,73,0.7)]" />
               )}
               {detectado && (
-                <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-emerald-500/15 text-emerald-400">
+                <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-emerald-500/25 text-emerald-300 backdrop-blur-sm">
                   <CheckCircle2 className="size-12" />
                   <span className="text-sm font-bold">{detectado} detectado</span>
                 </span>
@@ -61,9 +146,23 @@ export function TecnicoEscanearPage() {
           </div>
 
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-ink-950 to-transparent p-4">
-            <p className="flex items-center gap-2 text-xs text-zinc-400">
-              <Camera className="size-4" />
-              La cámara se activará en el dispositivo del técnico
+            <p className="flex items-center gap-2 text-xs text-zinc-300">
+              {camaraError ? (
+                <>
+                  <CameraOff className="size-4 text-brand-500" />
+                  Sin acceso a la cámara. Permita el acceso o use el código manual.
+                </>
+              ) : camaraLista ? (
+                <>
+                  <Camera className="size-4 text-emerald-400" />
+                  Cámara activa · apunte al QR del equipo
+                </>
+              ) : (
+                <>
+                  <Camera className="size-4" />
+                  Activando cámara…
+                </>
+              )}
             </p>
             <button
               type="button"
@@ -78,7 +177,7 @@ export function TecnicoEscanearPage() {
 
       <Button className="w-full py-3" onClick={simularLectura}>
         <Camera className="size-4" />
-        Simular lectura de QR
+        Simular lectura de QR (demo)
       </Button>
 
       {/* Entrada manual */}

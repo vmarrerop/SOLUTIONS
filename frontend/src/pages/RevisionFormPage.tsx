@@ -22,6 +22,7 @@ import {
 import { Button, Card, PageHeader, cx } from '../components/ui'
 import { siguienteConsecutivo } from '../data/mock'
 import { useData } from '../store/DataContext'
+import { generarReportePdf } from '../utils/reportePdf'
 
 /* ------------------------------------------------------------------ */
 /* Catálogo del formato DM-MTT-001                                     */
@@ -258,6 +259,7 @@ export function RevisionFormPage() {
   const [fotosEntrada, setFotosEntrada] = useState<string[]>([])
   const [fotosSalida, setFotosSalida] = useState<string[]>([])
   const [enviado, setEnviado] = useState(false)
+  const [generandoPdf, setGenerandoPdf] = useState(false)
 
   const consecutivo = siguienteConsecutivo()
   const equipo = equipos.find((e) => e.id === equipoId)
@@ -296,6 +298,65 @@ export function RevisionFormPage() {
       ),
     )
 
+  const descargarPdf = async () => {
+    setGenerandoPdf(true)
+    try {
+      await generarReportePdf({
+        consecutivo,
+        motivo: MOTIVOS.find((m) => m.id === motivo)?.label ?? motivo,
+        equipo: equipo && {
+          codigo: equipo.codigo,
+          nombre: equipo.nombre,
+          modelo: equipo.modelo,
+          serial: equipo.serial,
+          ubicacion: equipo.ubicacion,
+        },
+        tipoEquipo: tipoEquipo
+          ? `${tipoEquipo} · ${TIPOS_EQUIPO.find((t) => t.id === tipoEquipo)?.label ?? ''}`
+          : null,
+        inspeccionVisual: INSPECCION_VISUAL.map((item, i) => ({
+          item,
+          estado:
+            visual[i].estado === 'bien' ? 'BIEN' : visual[i].estado === 'mal' ? 'MAL' : '-',
+          obs: visual[i].obs,
+        })),
+        rutina: rutinaVisible.map(({ texto, i }) => ({
+          item: texto,
+          estado: rutina[i].estado === 'ok' ? 'OK' : rutina[i].estado === 'na' ? 'N/A' : '-',
+          obs: rutina[i].obs,
+        })),
+        medicionesMecanicas: medMec
+          .filter((m) => m.etiqueta || m.sum || m.ret)
+          .map((m) => ({
+            tipo:
+              m.tipo === 'temperatura' ? 'Temp de' : m.tipo === 'presion' ? 'Presión de' : 'Dato de',
+            etiqueta: m.etiqueta,
+            v1: m.sum,
+            v2: m.ret,
+          })),
+        medicionesElectricas: medElec
+          .filter((m) => m.componente || m.vab || m.vbc || m.vca || m.il1 || m.il2 || m.il3)
+          .map((m) => ({
+            componente: m.componente,
+            vab: m.vab,
+            vbc: m.vbc,
+            vca: m.vca,
+            il1: m.il1,
+            il2: m.il2,
+            il3: m.il3,
+          })),
+        monitoreo,
+        analisis,
+        correctivos,
+        observaciones,
+        fotosEntrada,
+        fotosSalida,
+      })
+    } finally {
+      setGenerandoPdf(false)
+    }
+  }
+
   if (enviado) {
     return (
       <div className="mx-auto max-w-md pt-10">
@@ -310,9 +371,9 @@ export function RevisionFormPage() {
             guardado y el documento PDF fue generado correctamente.
           </p>
           <div className="mt-6 flex flex-col gap-2">
-            <Button className="w-full">
+            <Button className="w-full" disabled={generandoPdf} onClick={descargarPdf}>
               <FileText className="size-4" />
-              Descargar PDF del reporte
+              {generandoPdf ? 'Generando PDF…' : 'Descargar PDF del reporte'}
             </Button>
             {modoTecnico ? (
               <Link to="/tecnico/escanear">
