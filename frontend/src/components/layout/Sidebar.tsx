@@ -25,9 +25,7 @@ export function Sidebar({
     equipos.filter((e) => e.empresaId === empresaId).length
 
   return (
-    <aside
-      className={cx('relative flex-col overflow-hidden bg-ink-950 text-zinc-300', className)}
-    >
+    <aside className={cx('flex-col overflow-hidden bg-ink-950 text-zinc-300', className)}>
       {/* Marca de agua con el isotipo */}
       <img
         src="/icon.png"
