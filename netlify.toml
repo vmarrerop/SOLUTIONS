@@ -1,0 +1,11 @@
+# Configuración de despliegue del demo (frontend only)
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+# SPA: cualquier ruta la resuelve React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,50 @@
+import { Link } from 'react-router-dom'
+import { Bell, Menu, QrCode } from 'lucide-react'
+import { Avatar } from '../ui'
+
+export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
+  return (
+    <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/85 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            className="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden"
+            aria-label="Abrir menú"
+          >
+            <Menu className="size-5" />
+          </button>
+          <div className="lg:hidden">
+            <p className="text-sm leading-none font-bold text-zinc-900">
+              Solutions <span className="text-brand-600">Machine</span>
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-500">Gestión de Activos</p>
+          </div>
+          <p className="hidden text-sm text-zinc-500 lg:block">
+            Portal de Backoffice · Mantenimiento y Activos
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Link
+            to="/escanear"
+            className="hidden items-center gap-2 rounded-xl bg-ink-950 px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-800 sm:inline-flex"
+          >
+            <QrCode className="size-4" />
+            Escanear QR
+          </Link>
+          <button
+            type="button"
+            className="relative rounded-lg p-2 text-zinc-600 hover:bg-zinc-100"
+            aria-label="Notificaciones"
+          >
+            <Bell className="size-5" />
+            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-brand-600 ring-2 ring-white" />
+          </button>
+          <Avatar nombre="Valentina Marín" className="size-8 bg-brand-600 sm:size-9" />
+        </div>
+      </div>
+    </header>
+  )
+}

@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+
+  /* Rojo corporativo Solutions Machine */
+  --color-brand-50: #fef2f3;
+  --color-brand-100: #fde3e5;
+  --color-brand-200: #fbccd0;
+  --color-brand-300: #f7a2a9;
+  --color-brand-400: #f06a76;
+  --color-brand-500: #e63a49;
+  --color-brand-600: #d21f30;
+  --color-brand-700: #b01525;
+  --color-brand-800: #921522;
+  --color-brand-900: #7a1622;
+  --color-brand-950: #42060d;
+
+  /* Negros / superficies oscuras */
+  --color-ink-500: #52525e;
+  --color-ink-600: #3f3f4a;
+  --color-ink-700: #2b2b33;
+  --color-ink-800: #1c1c22;
+  --color-ink-900: #121216;
+  --color-ink-950: #0a0a0c;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-zinc-100 font-sans text-zinc-900;
+  }
+
+  ::selection {
+    @apply bg-brand-600 text-white;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-zinc-400) transparent;
+  }
+
+  /* Línea animada del escáner QR */
+  .animate-scanline {
+    animation: scanline 2.4s ease-in-out infinite;
+  }
+
+  @keyframes scanline {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(13rem);
+    }
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

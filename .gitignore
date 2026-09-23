@@ -1,0 +1,11 @@
+# Dependencias y builds (también cubiertos por frontend/.gitignore)
+node_modules/
+dist/
+
+# Variables de entorno y secretos
+.env
+.env.*
+
+# Sistema
+.DS_Store
+Thumbs.db
