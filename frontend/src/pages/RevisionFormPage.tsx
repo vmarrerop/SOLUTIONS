@@ -510,9 +510,9 @@ export function RevisionFormPage() {
         <ul className="divide-y divide-zinc-100">
           {INSPECCION_VISUAL.map((item, i) => (
             <li key={item} className="space-y-2 py-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col items-center gap-2.5 text-center">
                 <span className="text-sm text-zinc-700">{item}</span>
-                <div className="flex gap-1.5">
+                <div className="flex justify-center gap-2">
                   <button
                     type="button"
                     onClick={() =>
