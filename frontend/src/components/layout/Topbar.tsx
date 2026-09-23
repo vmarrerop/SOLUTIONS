@@ -23,11 +23,18 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
           >
             <Menu className="size-5" />
           </button>
-          <div className="lg:hidden">
-            <p className="text-sm leading-none font-bold text-zinc-900">
-              Solutions <span className="text-brand-600">Machine</span>
-            </p>
-            <p className="mt-0.5 text-[11px] text-zinc-500">Gestión de Activos</p>
+          <div className="flex items-center gap-2 lg:hidden">
+            <img
+              src="/icon.png"
+              alt="Solutions Machine"
+              className="size-8 shrink-0 object-contain"
+            />
+            <div>
+              <p className="text-sm leading-none font-bold text-zinc-900">
+                Solutions <span className="text-brand-600">Machine</span>
+              </p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Gestión de Activos</p>
+            </div>
           </div>
           <p className="hidden text-sm text-zinc-500 lg:block">
             Portal de Backoffice · Mantenimiento y Activos

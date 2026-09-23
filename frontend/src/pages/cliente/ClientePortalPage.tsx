@@ -36,9 +36,11 @@ export function ClientePortalPage() {
       <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 shadow-md shadow-brand-600/40">
-              <span className="text-sm font-extrabold text-white">S</span>
-            </div>
+            <img
+              src="/icon.png"
+              alt="Solutions Machine"
+              className="size-9 shrink-0 object-contain"
+            />
             <div className="leading-tight">
               <p className="text-sm font-bold text-zinc-900">Solutions Machine</p>
               <p className="text-[10px] font-semibold tracking-wide text-brand-600 uppercase">

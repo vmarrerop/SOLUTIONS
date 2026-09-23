@@ -257,8 +257,8 @@ export function SearchInput({
 export function LogoSM({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 shadow-md shadow-brand-600/40">
-        <span className="text-base font-extrabold text-white">S</span>
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-md">
+        <img src="/icon.png" alt="Solutions Machine" className="h-full w-full object-contain" />
       </div>
       {!compact && (
         <div className="leading-tight">

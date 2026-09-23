@@ -42,8 +42,12 @@ export function TecnicoLoginPage() {
       <div className="relative w-full max-w-sm">
         {/* Marca */}
         <div className="flex items-center justify-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-brand-600 shadow-lg shadow-brand-600/40">
-            <span className="text-lg font-extrabold text-white">S</span>
+          <div className="flex size-11 items-center justify-center rounded-xl bg-white p-1.5 shadow-lg">
+            <img
+              src="/icon.png"
+              alt="Solutions Machine"
+              className="h-full w-full object-contain"
+            />
           </div>
           <div className="leading-tight text-white">
             <p className="font-bold">Solutions Machine</p>

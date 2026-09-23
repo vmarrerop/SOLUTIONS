@@ -44,8 +44,12 @@ export function LoginPage() {
         <div className="pointer-events-none absolute -bottom-40 -left-24 size-96 rounded-full bg-brand-600/10 blur-3xl" />
 
         <div className="relative flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-brand-600 shadow-lg shadow-brand-600/40">
-            <span className="text-lg font-extrabold">S</span>
+          <div className="flex size-10 items-center justify-center rounded-xl bg-white p-1.5 shadow-lg">
+            <img
+              src="/icon.png"
+              alt="Solutions Machine"
+              className="h-full w-full object-contain"
+            />
           </div>
           <div className="leading-tight">
             <p className="font-bold">Solutions Machine</p>
