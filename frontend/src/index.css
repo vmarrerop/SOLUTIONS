@@ -30,6 +30,26 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Nada puede desbordar horizontalmente la página en móvil */
+  html,
+  body {
+    overflow-x: clip;
+    max-width: 100%;
+  }
+
+  /* iOS Safari hace zoom automático al enfocar inputs con letra < 16px,
+     lo que descuadra la página. En pantallas táctiles los controles
+     usan mínimo 16px. */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 
   /* Respuesta táctil inmediata en móvil: elimina el delay de doble-tap

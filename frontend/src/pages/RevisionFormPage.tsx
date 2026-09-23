@@ -322,15 +322,6 @@ export function RevisionFormPage() {
   const setVisualItem = (i: number, patch: Partial<{ estado: VisualEstado; obs: string }>) =>
     setVisual((v) => v.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
 
-  const marcarTodosOk = () =>
-    setRutina((r) =>
-      r.map((v, idx) =>
-        rutinaVisible.some((it) => it.i === idx) && v.estado === null
-          ? { ...v, estado: 'ok' }
-          : v,
-      ),
-    )
-
   const descargarPdf = async () => {
     setGenerandoPdf(true)
     try {
@@ -654,24 +645,15 @@ export function RevisionFormPage() {
 
       {/* Rutina de mantenimiento general */}
       <Card className={cx('p-4 sm:p-5', bloqueado)}>
-        <div className="flex items-start justify-between gap-3">
-          <SectionTitle
-            icon={ClipboardList}
-            title="Rutina de mantenimiento general"
-            hint={
-              tipoEquipo
-                ? `${rutinaVisible.length} ítems aplican para ${tipoEquipo}.`
-                : 'Seleccione el tipo de equipo para filtrar los ítems aplicables.'
-            }
-          />
-          <button
-            type="button"
-            onClick={marcarTodosOk}
-            className="shrink-0 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Marcar pendientes ✓
-          </button>
-        </div>
+        <SectionTitle
+          icon={ClipboardList}
+          title="Rutina de mantenimiento general"
+          hint={
+            tipoEquipo
+              ? `${rutinaVisible.length} ítems aplican para ${tipoEquipo}.`
+              : 'Seleccione el tipo de equipo para filtrar los ítems aplicables.'
+          }
+        />
 
         {/* Progreso */}
         <div className="mt-4">
