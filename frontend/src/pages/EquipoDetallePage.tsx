@@ -49,7 +49,7 @@ export function EquipoDetallePage() {
     ['Serial', equipo.serial],
     ['Instalación', formatFecha(equipo.fechaInstalacion)],
     ['Responsable', equipo.responsable],
-    ['Próxima revisión', formatFecha(equipo.proximaRevision)],
+    ['Última revisión', formatFecha(equipo.ultimaRevision)],
   ]
 
   return (

@@ -11,6 +11,7 @@ import {
   cx,
 } from '../components/ui'
 import { formatFecha, getEquipo, revisiones } from '../data/mock'
+import { useData } from '../store/DataContext'
 import type { TipoServicio } from '../types'
 
 const filtros: Array<{ id: TipoServicio | 'todos'; label: string }> = [
@@ -21,21 +22,24 @@ const filtros: Array<{ id: TipoServicio | 'todos'; label: string }> = [
 ]
 
 export function HistorialPage() {
+  const { empresas, getEmpresa } = useData()
   const [query, setQuery] = useState('')
   const [filtro, setFiltro] = useState<TipoServicio | 'todos'>('todos')
+  const [empresaFiltro, setEmpresaFiltro] = useState('')
 
   const lista = useMemo(() => {
     const q = query.trim().toLowerCase()
     return revisiones.filter((r) => {
+      const eq = getEquipo(r.equipoId)
+      if (empresaFiltro && eq?.empresaId !== empresaFiltro) return false
       if (filtro !== 'todos' && r.tipo !== filtro) return false
       if (!q) return true
-      const eq = getEquipo(r.equipoId)
       return [r.consecutivo, r.tecnico, r.observaciones, eq?.nombre, eq?.codigo]
         .join(' ')
         .toLowerCase()
         .includes(q)
     })
-  }, [query, filtro])
+  }, [query, filtro, empresaFiltro])
 
   return (
     <div className="space-y-5">
@@ -50,12 +54,26 @@ export function HistorialPage() {
         }
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Buscar por consecutivo, equipo, técnico…"
-        />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar por consecutivo, equipo, técnico…"
+          />
+          <select
+            value={empresaFiltro}
+            onChange={(e) => setEmpresaFiltro(e.target.value)}
+            className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none sm:w-56"
+          >
+            <option value="">Todas las empresas</option>
+            {empresas.map((em) => (
+              <option key={em.id} value={em.id}>
+                {em.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {filtros.map((f) => (
             <button
@@ -93,6 +111,9 @@ export function HistorialPage() {
               >
                 {eq?.nombre}
               </Link>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                {eq ? (getEmpresa(eq.empresaId)?.nombre ?? 'Sin empresa') : ''}
+              </p>
               <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{r.observaciones}</p>
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-zinc-500">
                 <TipoServicioBadge tipo={r.tipo} />
@@ -138,7 +159,10 @@ export function HistorialPage() {
                     >
                       {eq?.nombre}
                     </Link>
-                    <p className="font-mono text-xs text-zinc-500">{eq?.codigo}</p>
+                    <p className="text-xs text-zinc-500">
+                      <span className="font-mono">{eq?.codigo}</span>
+                      {eq ? ` · ${getEmpresa(eq.empresaId)?.nombre ?? 'Sin empresa'}` : ''}
+                    </p>
                   </td>
                   <td className="px-5 py-3.5">
                     <TipoServicioBadge tipo={r.tipo} />

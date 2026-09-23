@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Plus } from 'lucide-react'
 import { Button, Card, PageHeader, cx } from '../components/ui'
 import { useData } from '../store/DataContext'
+import { getRevisionesDeEquipo } from '../data/mock'
 import type { EstadoEquipo, Equipo } from '../types'
 
 const ESTADOS: Record<
@@ -37,12 +38,14 @@ function footerDe(eq: Equipo): { label: string; valor: string } {
     return { label: 'Correctivo en curso', valor: `desde ${fechaCorta(eq.ultimaRevision)}` }
   if (eq.estado === 'mantenimiento')
     return { label: 'Revisión en curso', valor: fechaCorta(eq.ultimaRevision) }
-  return { label: 'Próx. preventivo', valor: fechaCorta(eq.proximaRevision) }
+  if (!eq.ultimaRevision) return { label: 'Última revisión', valor: 'sin registros' }
+  return { label: 'Última revisión', valor: fechaCorta(eq.ultimaRevision) }
 }
 
 function EquipoRow({ eq }: { eq: Equipo }) {
   const est = ESTADOS[eq.estado]
   const footer = footerDe(eq)
+  const nRevisiones = getRevisionesDeEquipo(eq.id).length
   return (
     <Link
       to={`/equipos/${eq.id}`}
@@ -63,6 +66,13 @@ function EquipoRow({ eq }: { eq: Equipo }) {
           <span className="font-mono sm:hidden">{eq.codigo} · </span>
           {eq.ubicacion}
         </span>
+      </span>
+      <span
+        className="hidden shrink-0 items-center gap-1 text-xs text-zinc-400 md:flex"
+        title={`${nRevisiones} ${nRevisiones === 1 ? 'revisión registrada' : 'revisiones registradas'}`}
+      >
+        <FileText className="size-3.5" />
+        {nRevisiones}
       </span>
       <span className="shrink-0 text-right">
         <span className="hidden text-[11px] text-zinc-500 sm:block">{footer.label}</span>
