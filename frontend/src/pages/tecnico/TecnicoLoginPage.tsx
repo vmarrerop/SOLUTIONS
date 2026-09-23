@@ -1,54 +1,37 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, KeyRound, QrCode, ShieldCheck } from 'lucide-react'
-import { Button, cx } from '../../components/ui'
+import { Button } from '../../components/ui'
+import { PinInput, PIN_LARGO } from '../../components/PinInput'
+import { setRol, validarCredenciales } from '../../utils/auth'
 import { useData } from '../../store/DataContext'
-
-/* Credenciales de demo (quemadas en código) */
-const CREDENCIALES = {
-  email: 'tecnico@gmail.com',
-  pin: '1234',
-}
-
-const PIN_LARGO = 4
 
 export function TecnicoLoginPage() {
   const navigate = useNavigate()
   const { codigo } = useParams()
   const { equipos } = useData()
-  const pinRef = useRef<HTMLInputElement>(null)
-  const [email, setEmail] = useState('')
+  const [usuario, setUsuario] = useState('')
   const [pin, setPin] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState(false)
 
-  const entrar = (emailActual: string, pinActual: string) => {
-    if (emailActual.trim().toLowerCase() !== CREDENCIALES.email) {
-      setError('Correo o PIN incorrectos. Verifique e intente de nuevo.')
+  const entrar = (usuarioActual: string, pinActual: string) => {
+    const rol = validarCredenciales(usuarioActual, pinActual)
+    if (rol !== 'tecnico') {
+      setError(true)
       setPin('')
       return
     }
-    if (pinActual !== CREDENCIALES.pin) {
-      setError('Correo o PIN incorrectos. Verifique e intente de nuevo.')
-      setPin('')
-      return
-    }
-    sessionStorage.setItem('sm-tecnico', '1')
+    setRol('tecnico')
     // Demo estática: el QR abre el formulario de un equipo aleatorio
     const aleatorio = equipos[Math.floor(Math.random() * equipos.length)]
     navigate(`/tecnico/reporte?equipo=${aleatorio.id}`, { replace: true })
   }
 
   const onPinChange = (valor: string) => {
-    const limpio = valor.replace(/\D/g, '').slice(0, PIN_LARGO)
-    setPin(limpio)
-    setError(null)
+    setPin(valor)
+    setError(false)
     // Al completar los 4 dígitos se valida automáticamente
-    if (limpio.length === PIN_LARGO) entrar(email, limpio)
-  }
-
-  const ingresar = (e: React.FormEvent) => {
-    e.preventDefault()
-    entrar(email, pin)
+    if (valor.length === PIN_LARGO) entrar(usuario, valor)
   }
 
   return (
@@ -87,7 +70,10 @@ export function TecnicoLoginPage() {
 
         {/* Formulario */}
         <form
-          onSubmit={ingresar}
+          onSubmit={(e) => {
+            e.preventDefault()
+            entrar(usuario, pin)
+          }}
           className="mt-6 space-y-5 rounded-2xl bg-white p-6 shadow-2xl"
         >
           <div>
@@ -99,72 +85,31 @@ export function TecnicoLoginPage() {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-zinc-700">
-              Correo electrónico
+              Usuario
             </label>
             <input
-              type="email"
-              value={email}
+              value={usuario}
               onChange={(e) => {
-                setEmail(e.target.value)
-                setError(null)
+                setUsuario(e.target.value)
+                setError(false)
               }}
-              placeholder="tecnico@gmail.com"
+              placeholder="tecnico"
               autoComplete="username"
+              autoCapitalize="none"
               className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm placeholder:text-zinc-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
             />
           </div>
 
-          {/* PIN de 4 dígitos (oculto, circulitos) */}
           <div>
             <label className="mb-2 block text-center text-sm font-medium text-zinc-700">
               PIN de acceso
             </label>
-            <button
-              type="button"
-              onClick={() => pinRef.current?.focus()}
-              className="mx-auto flex items-center justify-center gap-4"
-              aria-label="Ingresar PIN"
-            >
-              {Array.from({ length: PIN_LARGO }).map((_, i) => (
-                <span
-                  key={i}
-                  className={cx(
-                    'flex size-12 items-center justify-center rounded-full border-2 transition-all',
-                    error
-                      ? 'border-brand-400 bg-brand-50'
-                      : i < pin.length
-                        ? 'border-brand-600 bg-brand-50'
-                        : i === pin.length
-                          ? 'border-brand-500 bg-white ring-2 ring-brand-500/25'
-                          : 'border-zinc-300 bg-white',
-                  )}
-                >
-                  {i < pin.length && (
-                    <span className="size-3 rounded-full bg-brand-600" />
-                  )}
-                </span>
-              ))}
-            </button>
-            {/* Input real (invisible) que captura los dígitos */}
-            <input
-              ref={pinRef}
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="one-time-code"
-              maxLength={PIN_LARGO}
-              value={pin}
-              onChange={(e) => onPinChange(e.target.value)}
-              className="sr-only"
-            />
-            <p className="mt-2 text-center text-xs text-zinc-400">
-              Toque los círculos para digitar su PIN
-            </p>
+            <PinInput value={pin} onChange={onPinChange} error={error} />
           </div>
 
           {error && (
             <p className="rounded-lg bg-brand-50 px-3 py-2 text-center text-xs font-semibold text-brand-700">
-              {error}
+              Usuario o PIN incorrectos. Verifique e intente de nuevo.
             </p>
           )}
 
@@ -179,8 +124,8 @@ export function TecnicoLoginPage() {
               <KeyRound className="size-3.5" />
               Credenciales de demostración
             </p>
-            <p className="mt-1 font-mono">{CREDENCIALES.email}</p>
-            <p className="font-mono">PIN: {CREDENCIALES.pin}</p>
+            <p className="mt-1 font-mono">Usuario: tecnico</p>
+            <p className="font-mono">PIN: 1234</p>
           </div>
         </form>
 

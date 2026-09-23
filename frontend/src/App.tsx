@@ -12,6 +12,7 @@ import { HistorialPage } from './pages/HistorialPage'
 import { TecnicoLayout } from './components/layout/TecnicoLayout'
 import { TecnicoLoginPage } from './pages/tecnico/TecnicoLoginPage'
 import { TecnicoEscanearPage } from './pages/tecnico/TecnicoEscanearPage'
+import { ClientePortalPage } from './pages/cliente/ClientePortalPage'
 
 export default function App() {
   return (
@@ -26,6 +27,9 @@ export default function App() {
           <Route path="/tecnico/escanear" element={<TecnicoEscanearPage />} />
           <Route path="/tecnico/reporte" element={<RevisionFormPage />} />
         </Route>
+
+        {/* Portal del cliente */}
+        <Route path="/cliente" element={<ClientePortalPage />} />
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/equipos" replace />} />
           <Route path="/equipos" element={<EquiposPage />} />

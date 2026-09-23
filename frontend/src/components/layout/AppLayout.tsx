@@ -1,11 +1,14 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { BottomNav } from './BottomNav'
+import { getRol } from '../../utils/auth'
 
 export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  if (getRol() !== 'admin') return <Navigate to="/login" replace />
 
   return (
     <div className="min-h-dvh bg-zinc-100">

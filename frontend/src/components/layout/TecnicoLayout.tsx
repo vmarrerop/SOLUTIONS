@@ -1,14 +1,14 @@
 import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { LogOut, QrCode } from 'lucide-react'
+import { cerrarSesion, getRol } from '../../utils/auth'
 
 export function TecnicoLayout() {
   const navigate = useNavigate()
-  const autenticado = sessionStorage.getItem('sm-tecnico') === '1'
 
-  if (!autenticado) return <Navigate to="/t" replace />
+  if (getRol() !== 'tecnico') return <Navigate to="/t" replace />
 
   const salir = () => {
-    sessionStorage.removeItem('sm-tecnico')
+    cerrarSesion()
     navigate('/t', { replace: true })
   }
 

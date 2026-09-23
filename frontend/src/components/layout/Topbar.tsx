@@ -1,8 +1,16 @@
-import { Link } from 'react-router-dom'
-import { Bell, Menu, QrCode } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Bell, LogOut, Menu, QrCode } from 'lucide-react'
 import { Avatar } from '../ui'
+import { cerrarSesion } from '../../utils/auth'
 
 export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
+  const navigate = useNavigate()
+
+  const salir = () => {
+    cerrarSesion()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
@@ -43,6 +51,15 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
             <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-brand-600 ring-2 ring-white" />
           </button>
           <Avatar nombre="Valentina Marín" className="size-8 bg-brand-600 sm:size-9" />
+          <button
+            type="button"
+            onClick={salir}
+            title="Cerrar sesión"
+            className="flex items-center gap-1.5 rounded-lg p-2 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+          >
+            <LogOut className="size-5" />
+            <span className="hidden text-sm font-semibold lg:inline">Salir</span>
+          </button>
         </div>
       </div>
     </header>
