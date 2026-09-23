@@ -32,6 +32,19 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Respuesta táctil inmediata en móvil: elimina el delay de doble-tap
+     y el resaltado gris al tocar. */
+  button,
+  a,
+  label,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply bg-zinc-100 font-sans text-zinc-900;
   }

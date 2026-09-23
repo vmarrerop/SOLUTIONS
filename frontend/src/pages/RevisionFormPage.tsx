@@ -144,6 +144,39 @@ function SectionTitle({
   )
 }
 
+/**
+ * Reduce la foto de cámara (8-12 MP) a máx. 1280px JPEG.
+ * Sin esto, el celular repinta imágenes enormes en cada interacción
+ * y toda la página se vuelve lenta.
+ */
+async function comprimirFoto(file: File): Promise<string> {
+  const original = URL.createObjectURL(file)
+  try {
+    const img = new Image()
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res()
+      img.onerror = () => rej(new Error('No se pudo leer la foto'))
+      img.src = original
+    })
+    const max = 1280
+    const escala = Math.min(1, max / Math.max(img.width, img.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(img.width * escala)
+    canvas.height = Math.round(img.height * escala)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return original
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob | null>((res) =>
+      canvas.toBlob(res, 'image/jpeg', 0.82),
+    )
+    if (!blob) return original
+    URL.revokeObjectURL(original)
+    return URL.createObjectURL(blob)
+  } catch {
+    return original
+  }
+}
+
 function PhotoCapture({
   titulo,
   hint,
@@ -157,9 +190,9 @@ function PhotoCapture({
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const onFiles = (files: FileList | null) => {
-    if (!files) return
-    const urls = Array.from(files).map((f) => URL.createObjectURL(f))
+  const onFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const urls = await Promise.all(Array.from(files).map(comprimirFoto))
     onChange([...fotos, ...urls])
   }
 
