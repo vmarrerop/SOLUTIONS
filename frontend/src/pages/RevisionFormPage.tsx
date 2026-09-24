@@ -12,6 +12,7 @@ import {
   Lock,
   MessageSquarePlus,
   MinusCircle,
+  PenLine,
   Plus,
   Save,
   Thermometer,
@@ -23,6 +24,7 @@ import { Button, Card, PageHeader, cx } from '../components/ui'
 import { siguienteConsecutivo } from '../data/mock'
 import { useData } from '../store/DataContext'
 import { generarReportePdf } from '../utils/reportePdf'
+import { ESTILOS_FIRMA, getFirma } from '../utils/firma'
 
 /* ------------------------------------------------------------------ */
 /* Catálogo del formato DM-MTT-001                                     */
@@ -119,8 +121,10 @@ interface MedicionElectrica {
 /* Componentes auxiliares                                              */
 /* ------------------------------------------------------------------ */
 
-const inputCls =
-  'w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none'
+/* Base sin ancho: permite fijar w-* sin conflicto con w-full */
+const inputBase =
+  'rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none'
+const inputCls = `w-full ${inputBase}`
 
 function SectionTitle({
   icon: Icon,
@@ -291,16 +295,19 @@ export function RevisionFormPage() {
   const [observaciones, setObservaciones] = useState('')
   const [fotosEntrada, setFotosEntrada] = useState<string[]>([])
   const [fotosSalida, setFotosSalida] = useState<string[]>([])
+  const [firmado, setFirmado] = useState(false)
   const [enviado, setEnviado] = useState(false)
   const [generandoPdf, setGenerandoPdf] = useState(false)
 
   const consecutivo = siguienteConsecutivo()
   const equipo = equipos.find((e) => e.id === equipoId)
+  const firmaTecnico = modoTecnico ? getFirma() : null
 
   /* El formulario queda bloqueado hasta tomar la foto de entrada */
   const fotoEntradaLista = fotosEntrada.length > 0
   const bloqueado = fotoEntradaLista ? false : ('pointer-events-none opacity-40 select-none' as const)
-  const puedeCompletar = fotoEntradaLista && fotosSalida.length > 0
+  const puedeCompletar =
+    fotoEntradaLista && fotosSalida.length > 0 && (!modoTecnico || firmado)
 
   /* Ítems de rutina visibles según tipo de equipo seleccionado */
   const rutinaVisible = useMemo(
@@ -375,6 +382,13 @@ export function RevisionFormPage() {
         observaciones,
         fotosEntrada,
         fotosSalida,
+        firma:
+          modoTecnico && firmado && firmaTecnico
+            ? {
+                nombre: firmaTecnico.nombre,
+                font: ESTILOS_FIRMA[firmaTecnico.estilo].font,
+              }
+            : null,
       })
     } finally {
       setGenerandoPdf(false)
@@ -763,7 +777,7 @@ export function RevisionFormPage() {
                       ),
                     )
                   }
-                  className={cx(inputCls, 'w-36 shrink-0')}
+                  className={cx('w-32 shrink-0 sm:w-36', inputBase)}
                 >
                   <option value="temperatura">Temp de</option>
                   <option value="presion">Presión de</option>
@@ -776,8 +790,8 @@ export function RevisionFormPage() {
                       arr.map((x) => (x.id === m.id ? { ...x, etiqueta: e.target.value } : x)),
                     )
                   }
-                  placeholder="Ej. agua, refrigerante, aire…"
-                  className={inputCls}
+                  placeholder="Ej. agua, refrigerante…"
+                  className={cx('min-w-0 flex-1', inputBase)}
                 />
                 <button
                   type="button"
@@ -864,7 +878,7 @@ export function RevisionFormPage() {
                     )
                   }
                   placeholder={`Componente ${idx + 1} · Ej. compresor 1, ventilador…`}
-                  className={inputCls}
+                  className={cx('min-w-0 flex-1', inputBase)}
                 />
                 <button
                   type="button"
@@ -1005,6 +1019,75 @@ export function RevisionFormPage() {
           </p>
         )}
       </Card>
+
+      {/* Firmas */}
+      {modoTecnico && firmaTecnico && (
+        <Card className={cx('space-y-4 p-4 sm:p-5', bloqueado)}>
+          <SectionTitle
+            icon={PenLine}
+            title="Firmas"
+            hint="Como soporte de la visita, firma el técnico. El cliente firma en sitio."
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {/* Técnico */}
+            <div
+              className={cx(
+                'rounded-xl border p-4 text-center',
+                firmado ? 'border-emerald-200 bg-emerald-50/40' : 'border-zinc-200',
+              )}
+            >
+              <p className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">
+                Representante técnico
+              </p>
+              {firmado ? (
+                <>
+                  <p
+                    className="mt-2 truncate text-3xl leading-tight text-ink-900"
+                    style={{ fontFamily: ESTILOS_FIRMA[firmaTecnico.estilo].font }}
+                  >
+                    {firmaTecnico.nombre}
+                  </p>
+                  <div className="mx-auto mt-1 w-44 border-t border-zinc-300" />
+                  <p className="mt-1.5 text-xs font-semibold text-zinc-700">
+                    {firmaTecnico.nombre}
+                  </p>
+                  <p className="mt-0.5 flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-600">
+                    <CheckCircle2 className="size-3.5" />
+                    Firmado
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setFirmado(false)}
+                    className="mt-1 text-[11px] font-semibold text-zinc-400 underline-offset-2 hover:text-zinc-600 hover:underline"
+                  >
+                    Quitar firma
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setFirmado(true)}
+                  className="mt-3 flex w-full flex-col items-center gap-1.5 rounded-xl border-2 border-dashed border-zinc-300 px-3 py-5 text-zinc-400 transition-colors hover:border-brand-400 hover:text-brand-600"
+                >
+                  <PenLine className="size-5" />
+                  <span className="text-xs font-semibold">Toca para firmar</span>
+                </button>
+              )}
+            </div>
+            {/* Cliente */}
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-center">
+              <p className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">
+                Representante del cliente
+              </p>
+              <p className="mt-6 text-sm text-zinc-400 italic">Pendiente por firmar</p>
+              <div className="mx-auto mt-4 w-44 border-t border-zinc-300" />
+              <p className="mt-1.5 text-[11px] text-zinc-400">
+                Firma en sitio al recibir el servicio
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Acciones */}
       <div className={cx('flex flex-col gap-2 sm:flex-row sm:justify-end', bloqueado)}>

@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { LogOut, QrCode } from 'lucide-react'
 import { cerrarSesion, getRol } from '../../utils/auth'
+import { getFirma, type Firma } from '../../utils/firma'
+import { FirmaModal } from '../FirmaModal'
 
 export function TecnicoLayout() {
   const navigate = useNavigate()
+  const [firma, setFirmaLocal] = useState<Firma | null>(() => getFirma())
 
   if (getRol() !== 'tecnico') return <Navigate to="/t" replace />
 
@@ -52,6 +56,9 @@ export function TecnicoLayout() {
       <main className="mx-auto w-full max-w-3xl px-4 pt-5 pb-10 sm:px-6">
         <Outlet />
       </main>
+
+      {/* La firma digital es obligatoria para trabajar */}
+      {!firma && <FirmaModal onGuardar={setFirmaLocal} />}
     </div>
   )
 }

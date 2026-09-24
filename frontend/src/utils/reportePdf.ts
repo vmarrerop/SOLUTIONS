@@ -30,6 +30,8 @@ export interface DatosReportePdf {
   observaciones: string
   fotosEntrada: string[]
   fotosSalida: string[]
+  /** Firma del técnico; el cliente siempre queda pendiente por firmar. */
+  firma?: { nombre: string; font: string } | null
 }
 
 const BRAND: [number, number, number] = [230, 58, 73]
@@ -58,6 +60,32 @@ async function fotoAJpeg(url: string): Promise<{ data: string; w: number; h: num
       w: canvas.width,
       h: canvas.height,
     }
+  } catch {
+    return null
+  }
+}
+
+/** Dibuja la firma caligráfica en un canvas y la devuelve como imagen PNG. */
+async function firmaAImagen(
+  nombre: string,
+  font: string,
+): Promise<{ data: string; w: number; h: number } | null> {
+  try {
+    await document.fonts.load(`64px ${font}`)
+    const canvas = document.createElement('canvas')
+    let ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.font = `64px ${font}`
+    const ancho = Math.ceil(ctx.measureText(nombre).width)
+    canvas.width = ancho + 40
+    canvas.height = 110
+    ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.font = `64px ${font}`
+    ctx.fillStyle = '#1c1c22'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(nombre, 20, 58)
+    return { data: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height }
   } catch {
     return null
   }
@@ -242,6 +270,74 @@ export async function generarReportePdf(d: DatosReportePdf) {
     if (x !== M) y += altoFila + 5
     y += 2
   }
+
+  /* ---------- Firmas ---------- */
+  const altoFirma = 42
+  if (y + altoFirma + 12 > H - M) {
+    doc.addPage()
+    y = M
+  }
+  doc.setFillColor(...INK)
+  doc.rect(M, y, W - M * 2, 7, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8)
+  doc.text('COMO SOPORTE DE LA VISITA, FIRMAN', M + 2, y + 4.7)
+  y += 10
+
+  const anchoCol = (W - M * 2 - 6) / 2
+  const cajas: Array<{ x: number; titulo: string; tecnico: boolean }> = [
+    { x: M, titulo: 'REPRESENTANTE DEL CLIENTE', tecnico: false },
+    { x: M + anchoCol + 6, titulo: 'REPRESENTANTE SOLUTIONS MACHINE', tecnico: true },
+  ]
+
+  const firmaImg = d.firma ? await firmaAImagen(d.firma.nombre, d.firma.font) : null
+  const hoyStr = new Date().toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+
+  for (const caja of cajas) {
+    doc.setDrawColor(200, 200, 205)
+    doc.rect(caja.x, y, anchoCol, altoFirma)
+    doc.setTextColor(120, 120, 128)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.5)
+    doc.text(caja.titulo, caja.x + 3, y + 5)
+
+    const centroX = caja.x + anchoCol / 2
+    const lineaY = y + altoFirma - 11
+
+    if (caja.tecnico && d.firma) {
+      if (firmaImg) {
+        const alto = 13
+        const ancho = Math.min(alto * (firmaImg.w / firmaImg.h), anchoCol - 14)
+        doc.addImage(firmaImg.data, 'PNG', centroX - ancho / 2, lineaY - alto - 1, ancho, alto)
+      }
+      doc.setDrawColor(120, 120, 128)
+      doc.line(caja.x + 10, lineaY, caja.x + anchoCol - 10, lineaY)
+      doc.setTextColor(39, 39, 42)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.text(d.firma.nombre, centroX, lineaY + 4.5, { align: 'center' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(6.5)
+      doc.setTextColor(120, 120, 128)
+      doc.text(`Firmado digitalmente · ${hoyStr}`, centroX, lineaY + 8.5, { align: 'center' })
+    } else {
+      doc.setTextColor(160, 160, 168)
+      doc.setFont('helvetica', 'italic')
+      doc.setFontSize(8.5)
+      doc.text('Pendiente por firmar', centroX, y + altoFirma / 2 - 2, { align: 'center' })
+      doc.setDrawColor(120, 120, 128)
+      doc.line(caja.x + 10, lineaY, caja.x + anchoCol - 10, lineaY)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(6.5)
+      doc.text('Nombre y firma', centroX, lineaY + 4.5, { align: 'center' })
+    }
+  }
+  y += altoFirma + 6
 
   /* ---------- Pie de página ---------- */
   const paginas = doc.getNumberOfPages()

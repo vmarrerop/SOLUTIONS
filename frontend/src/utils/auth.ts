@@ -24,6 +24,7 @@ export function setRol(rol: Rol) {
 
 export function cerrarSesion() {
   sessionStorage.removeItem(KEY)
+  sessionStorage.removeItem('sm-firma')
 }
 
 /** Valida usuario + PIN y devuelve el rol, o null si son inválidos. */
